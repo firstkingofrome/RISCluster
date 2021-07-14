@@ -1012,10 +1012,14 @@ def save_TraVal_index(M, fname_dataset, savepath, reserve=0.0):
                 print(f'{M} spectrograms requested, but only {m} '
                       f'available in database; setting M to {m}.')
                 M = m
+                print("setting replace equal to true so that this actually works correctly")
+                replace=True
+            else:
+                replace=False
         index = np.random.choice(
             np.arange(1,m),
             size=int(M * (1+reserve)),
-            replace=False
+            replace=replace
         )
         split_fraction = 0.8
         split = int(split_fraction * len(index))
