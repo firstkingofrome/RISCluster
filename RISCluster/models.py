@@ -21,7 +21,11 @@ if sys.platform == 'darwin':
     from sklearn.cluster import KMeans
     from sklearn.manifold import TSNE
 elif sys.platform == 'linux':
-    from cuml import KMeans, TSNE
+    #CUML requires a gpu
+    print("warning running CPU version which excludes cuml, will need to install with CUML if using GPU acceleration")
+    from sklearn.cluster import KMeans
+    from sklearn.manifold import TSNE
+    #from cuml import KMeans, TSNE
 from sklearn.metrics import silhouette_score
 from sklearn.mixture import GaussianMixture
 import torch

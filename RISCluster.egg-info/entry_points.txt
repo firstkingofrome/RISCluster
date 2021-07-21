@@ -1,0 +1,5 @@
+[console_scripts]
+ExtractH5Dataset = RISCluster.utils:ExtractH5Dataset
+GenerateSampleIndex = RISCluster.utils:GenerateSampleIndex
+query_H5size = RISCluster.utils:query_H5size
+
