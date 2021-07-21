@@ -1,0 +1,15 @@
+cmocean
+h5py
+jupyterlab
+matplotlib
+numpy
+obspy
+pandas
+pydotplus
+python-dotenv
+torch
+torchvision
+scikit-learn
+scipy
+tensorboard
+tqdm
