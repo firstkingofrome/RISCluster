@@ -71,6 +71,7 @@ def main():
             klist=config['PARAMETERS']['klist'],
             img_index=config['PARAMETERS']['img_index'],
             tbpid=tbpid,
+            T_seg=config['PARAMETERS']['T_seg'],
             workers=int(config['PARAMETERS']['workers'])
         )
         batch_size = config['HYPERPARAMETERS']['batch_size']

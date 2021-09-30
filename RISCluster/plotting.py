@@ -328,6 +328,7 @@ def cluster_gallery(
         centroids = model.clustering.weights
         X_c = model.decoder(centroids)
         centroids = centroids.detach().cpu().numpy()
+    #number of events to plot
     N = 6
     if latex:
         params = {
@@ -978,14 +979,15 @@ def view_DEC_output(x, label, x_rec, z, idx, figsize=(12,9), show=False):
     return fig
 
 
-def view_detections(fname_dataset, image_index, figsize=(12,9), show=True):
+def view_detections(fname_dataset, image_index, figsize=(12,9),T_seg=4.0,show=True):
     '''Plots selected spectrograms & traces.'''
     sample_index = np.arange(0, len(image_index))
     dataset = utils.H5SeismicDataset(
         fname_dataset,
         transform = transforms.Compose(
             [utils.SpecgramShaper(), utils.SpecgramToTensor()]
-        )
+        ),
+        T_seg=T_seg
     )
     subset = Subset(dataset, image_index)
     dataloader = DataLoader(subset, batch_size=len(image_index))
@@ -995,13 +997,14 @@ def view_detections(fname_dataset, image_index, figsize=(12,9), show=True):
         idx.numpy()
         with h5py.File(fname_dataset, 'r') as f:
             M = len(idx)
-            DataSpec = '/4.0/Trace'
+            DataSpec = '/'+str(T_seg)+'/Trace'
             dset = f[DataSpec]
-            k = 199
+            #do this dynamicaly so this tool is useful for more than just the 4 second case
+            k = dset.shape[-1]
 
             tr = np.empty([M, k])
             dset_arr = np.empty([k,])
-
+            
             for i in range(M):
                 dset_arr = dset[idx[i]]
                 tr[i,:] = dset_arr
@@ -1009,10 +1012,10 @@ def view_detections(fname_dataset, image_index, figsize=(12,9), show=True):
     factor = 1e-9
     tr_max = np.max(np.abs(tr)) / factor
 
-    tvec, fvec = utils.get_timefreqvec(fname_dataset)
+    tvec, fvec = utils.get_timefreqvec(fname_dataset,T_seg)
 
     extent = [min(tvec), max(tvec), min(fvec), max(fvec)]
-    metadata = utils.get_metadata(sample_index, image_index, fname_dataset)
+    metadata = utils.get_metadata(sample_index, image_index, fname_dataset,T_seg)
     fontsize = 16
     fig = plt.figure(figsize=figsize, dpi=150)
     cmap = 'cmo.ice_r'
@@ -1038,7 +1041,7 @@ def view_detections(fname_dataset, image_index, figsize=(12,9), show=True):
         plt.plot(tvec, tr[i,:] / factor)
         plt.xlim(min(tvec), max(tvec))
         plt.ylim(-tr_max, tr_max)
-        ax.set_xticks(np.arange(5))
+        ax.set_xticks(np.arange(int(T_seg)))
         if i == 0:
             plt.xlabel('Time (s)', size=fontsize)
             plt.ylabel('Acceleration\n(nm/s$^2$)', size=fontsize)
@@ -1567,7 +1570,7 @@ def view_specgram_training(
     return fig
 
 
-def view_TSNE(results, labels, title, show=False):
+def view_TSNE(results, labels, title,show=False,numEvents=30000):
     label_list, counts = np.unique(labels, return_counts=True)
 
     textsize = 14
@@ -1583,7 +1586,7 @@ def view_TSNE(results, labels, title, show=False):
 
     ax1 = fig.add_subplot(gs[0])
     for j in range(len(df["Class"].cat.categories)):
-        plt.plot(df[df.Class == df["Class"].cat.categories[j]].x, df[df.Class == df["Class"].cat.categories[j]].y, 'o', alpha=0.2, c=colors[j], ms=6, mec="w", mew=0.5, rasterized=True, label=j+1)
+        plt.plot(df[df.Class == df["Class"].cat.categories[j]].x, df[df.Class == df["Class"].cat.categories[j]].y, 'o', alpha=0.8, c=colors[j], ms=6, mec="w", mew=0.5, rasterized=True, label=j+1)
     plt.axis('off')
     leg = plt.legend(loc='center left', bbox_to_anchor=(0.9, 0.75), ncol=1, title="Class", title_fontsize=textsize)
     for lh in leg.legendHandles:
@@ -1595,7 +1598,7 @@ def view_TSNE(results, labels, title, show=False):
     plt.grid(axis='y', linestyle='--')
     plt.xticks(label_list+1, label_list+1)
 #     plt.ylim([0, 1.25 * max(counts)])
-    plt.ylim([0, 30000])
+    plt.ylim([0, numEvents])
     ax2.set_xlabel('Class', fontsize=textsize)
     ax2.set_ylabel('Detections', fontsize=textsize)
     plt.title('Class Assignments, $N_{train}$ = ' + f'{len(labels)}', fontsize=textsize)

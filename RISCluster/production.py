@@ -40,6 +40,7 @@ def DEC_pretrain(parameters, hyperparameters):
     savepath_exp = parameters['savepath']
     transform = parameters['transform']
     workers = parameters['workers']
+    T_seg = parameters["T_seg"]
     # ==== Checks =============================================================
     if not os.path.exists(fname_dataset):
         raise ValueError(f'Dataset file not found: {fname_dataset}')
@@ -51,7 +52,9 @@ def DEC_pretrain(parameters, hyperparameters):
         fname_dataset,
         transform = transforms.Compose(
             [utils.SpecgramShaper(), utils.SpecgramToTensor()]
-        )
+        ),
+        T_seg=T_seg
+        
     )
     tra_dataset = Subset(dataset, index_tra)
     val_dataset = Subset(dataset, index_val)
@@ -275,7 +278,7 @@ def DEC_predict(parameters):
     print(f'Dataset has {len(dataset)} samples.')
     dataloader = DataLoader(
         dataset,
-        batch_size=1024,
+        batch_size=1021,
         shuffle=False,
         num_workers=workers
     )

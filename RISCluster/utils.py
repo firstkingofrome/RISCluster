@@ -34,13 +34,14 @@ from tqdm import tqdm
 
 class H5SeismicDataset(Dataset):
     """Loads samples from H5 dataset for use in native PyTorch dataloader."""
-    def __init__(self, fname, transform=None):
+    def __init__(self, fname,T_seg=4.0, transform=None):
         self.transform = transform
         self.fname = fname
+        self.T_seg = T_seg
 
 
     def __len__(self):
-        m, _, _ = query_dbSize(self.fname)
+        m, _, _ = query_dbSize(self.fname,self.T_seg)
         return m
 
 
@@ -53,7 +54,7 @@ class H5SeismicDataset(Dataset):
 
     def read_h5(self, fname, idx):
         with h5py.File(fname, 'r') as f:
-            DataSpec = '/4.0/Spectrogram'
+            DataSpec = '/' + str(self.T_seg)+'/Spectrogram'
             return f[DataSpec][idx]
 
 
@@ -576,11 +577,17 @@ def GenerateSampleIndex():
         metavar='savepath',
         help='Enter savepath'
     )
+    parser.add_argument(
+        'T_seg',
+        default=4.0,
+        help='the time segment I am using, defaults to 4.0'
+    )
     args = parser.parse_args()
     M = args.M
     fname_dataset = args.path
     savepath = args.savepath
-    save_TraVal_index(M, fname_dataset, savepath)
+    T_seg = args.T_seg
+    save_TraVal_index(M, fname_dataset, savepath,T_seg)
 
 
 def get_channel(channel_index):
@@ -601,10 +608,10 @@ def get_datetime(datetime_index):
     return datetime
 
 
-def get_metadata(query_index, sample_index, fname_dataset):
+def get_metadata(query_index, sample_index, fname_dataset,T_seg=4.0):
     '''Returns station metadata given sample index.'''
     with h5py.File(fname_dataset, 'r') as f:
-        DataSpec = '/4.0/Catalogue'
+        DataSpec = '/'+str(T_seg)+'/Catalogue'
         dset = f[DataSpec]
         metadata = dict()
         counter = 0
@@ -702,12 +709,12 @@ def get_station(station):
         return station_list.index(station)
 
 
-def get_timefreqvec(fname_dataset):
-    with h5py.File(fname_dataset) as f:
-        DataSpec = '/4.0/Spectrogram'
+def get_timefreqvec(fname_dataset,T_seg=4.0):
+    with h5py.File(fname_dataset,'r') as f:
+        DataSpec = '/'+str(T_seg)+'/Spectrogram'
         dset = f[DataSpec]
-        tvec = dset[0, 87, 1:]
-        fvec = dset[0, 0:87, 0]
+        tvec = dset[0, dset.shape[1]-1, 1:]
+        fvec = dset[0, 0:dset.shape[1]-1, 0]
     return tvec, fvec
 
 
@@ -918,10 +925,10 @@ def parse_nclusters(line):
             raise Exception('Unable to parse filename for n_clusters.')
 
 
-def query_dbSize(path):
+def query_dbSize(path,T_seg=4.0):
     with h5py.File(path, 'r') as f:
         #samples, frequency bins, time bins, amplitude
-        DataSpec = '/4.0/Spectrogram'
+        DataSpec = '/'+str(T_seg)+'/Spectrogram'
         dset = f[DataSpec]
         m, n, o = dset.shape
         return m, n, o
@@ -935,15 +942,24 @@ def query_H5size():
     ----------
     path : str
         Path to the H5 database.
+    tseg : float
+        Current time segment used
     """
     parser = argparse.ArgumentParser(description='Enter path to .h5 file.')
     parser.add_argument(
         'path',
         help='Enter path to database; must be .h5/.hd5 file.'
     )
+    
+    parser.add_argument(
+        'tseg',
+        help='time segment length to use'
+    )
+    
     args = parser.parse_args()
     path = args.path
-    m, n, o = query_dbSize(path)
+    tseg = args.tseg
+    m, n, o = query_dbSize(path,tseg)
     print(f" >> h5 dataset contains {m} samples with dimensions [{n},{o}]. <<")
     pass
 
@@ -1001,12 +1017,13 @@ def save_labels(label_list, savepath, serial=None):
             w.writerows(label_list)
 
 
-def save_TraVal_index(M, fname_dataset, savepath, reserve=0.0):
+def save_TraVal_index(M, fname_dataset, savepath, T_seg=4.0,reserve=0.0):
 
 
-    def _set_TraVal_index(M, fname_dataset, reserve=0.0):
+    def _set_TraVal_index(M, fname_dataset, T_seg, reserve=0.0):
         with h5py.File(fname_dataset, 'r') as f:
-            DataSpec = '/4.0/Spectrogram'
+            #'/'+str(T_seg)+'/Spectrogram'
+            DataSpec = '/'+str(T_seg)+'/Spectrogram'
             m, _, _ = f[DataSpec].shape
             if M > m:
                 print(f'{M} spectrograms requested, but only {m} '
@@ -1017,6 +1034,7 @@ def save_TraVal_index(M, fname_dataset, savepath, reserve=0.0):
             size=int(M * (1+reserve)),
             replace=False
         )
+        print("test train fraction hard coded to 80%")
         split_fraction = 0.8
         split = int(split_fraction * len(index))
         index_tra = index[0:split]
@@ -1024,7 +1042,7 @@ def save_TraVal_index(M, fname_dataset, savepath, reserve=0.0):
         return index_tra, index_val, M
 
 
-    index_tra, index_val, M = _set_TraVal_index(M, fname_dataset)
+    index_tra, index_val, M = _set_TraVal_index(M, fname_dataset,T_seg)
     index = dict(
         index_tra=index_tra,
         index_val=index_val
