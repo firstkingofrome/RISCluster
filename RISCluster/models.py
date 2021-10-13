@@ -125,6 +125,7 @@ def pretrain(
         disp_index,
         fname_dataset,
         device,
+        T_seg = parameters["T_seg"],
         savepath=savepath_run,
         show=show,
     )
@@ -195,6 +196,7 @@ def pretrain(
                 disp_index,
                 fname_dataset,
                 device,
+                T_seg=parameters["T_seg"],
                 savepath=savepath_run,
                 show=show,
             )

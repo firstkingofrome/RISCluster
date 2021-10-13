@@ -10,7 +10,7 @@ January 2021
 import torch
 import torch.nn as nn
 
-
+# I expirmented with this for an 8 second data lenght (200X97
 # ======== This network is for data of dimension 100x87 (4 s) =================
 class Encoder(nn.Module):
     """
@@ -21,27 +21,91 @@ class Encoder(nn.Module):
     Outputs:
         - Latent feature space data
     """
-    def __init__(self):
+    def __init__(self,dataParameters = None):
+        #print("Expirmenting with 8 second data dimensions!\n")
+        #print("Did so by keeping 128 feature size and making the input 256*9")
+        #print("warning this program is currently set up to modify output and input layers for the NN automatically to fit input data\n")
+        #print("This is probably not ideal!\n")
+        self.dataParameters = dataParameters
         super(Encoder, self).__init__()
+        #he designed the stride so that each layer effectively shrinks the output by 2
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
+            #1,8X256
+            nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
             nn.ReLU(True),
-            nn.Conv2d(8, 16, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
+            #97X100
+            nn.Conv2d(8, 16, kernel_size=(3,3), stride=(2,2), padding=1),
             nn.ReLU(True),
-            nn.Conv2d(16, 32, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
+            #48X50
+            nn.Conv2d(16, 32, kernel_size=(3,3), stride=(2,2), padding=1),
             nn.ReLU(True),
-            nn.Conv2d(32, 64, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
+            #24X25
+            nn.Conv2d(32, 64, kernel_size=(3,3), stride=(2,2), padding=1),
             nn.ReLU(True),
-            nn.Conv2d(64, 128, kernel_size=(3,3), stride=(2,2), padding=(1,0)),
+            #12X12
+            nn.Conv2d(64, 128, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
             nn.ReLU(True),
-
+            #11,11
             nn.Flatten(),
-            nn.Linear(1152, 9),
+            #this tells the network the number of input features and the number of output features
+            #I guess that convolutional layers are not necessarily fully connected
+            #3073 inputs and 9 outputs
+            nn.Linear(128*4*7, 9),
             nn.ReLU(True)
         )
 
     def forward(self, x):
+        #print("encoder")
         x = self.encoder(x)
+        """
+        #debug encoder
+        #1,8X256
+        relu = nn.ReLU()
+        print(x.shape)
+        conv1 = nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(3,3), stride=(2,2), padding=(1,1))
+        x=conv1(x)
+        x = relu(x)
+        print(x.shape)
+        #97X200
+        conv2=nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3,3), stride=(2,2), padding=1)
+        x=conv2(x)
+        x = relu(x)
+        print(x.shape)
+        #48X100
+        conv3=nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3,3), stride=(2,2), padding=1)
+        nn.ReLU(True)
+        x=conv3(x)
+        x = relu(x)
+        print(x.shape)
+        #24X50
+        conv4=nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(3,3), stride=(2,2), padding=1)
+        nn.ReLU(True)
+        x=conv4(x)
+        x = relu(x)
+        print(x.shape)
+        #12X12
+        #changed the stride on the last layer to be finer (1,1)
+        conv5=nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(3,3), stride=(2,2), padding=(1,1))
+        nn.ReLU(True)
+        x=conv5(x)
+        x = relu(x)
+        print("5th convolution")
+        print(x.shape)
+        #11,11
+        #nn.Flatten()
+        #flatten x
+        x = x.reshape(x.size(0), -1)
+        print(x.shape)
+        #this tells the network the number of input features and the number of output features
+        #I guess that convolutional layers are not necessarily fully connected
+        #3073 inputs and 9 outputs
+        linear = nn.Linear(128*4*7, 9)
+        nn.ReLU(True)
+        x=linear(x)
+        print(x.shape)
+        print(self.encoder)
+        print(x.shape)
+        """
         return x
 
 
@@ -54,41 +118,52 @@ class Decoder(nn.Module):
     Outputs:
         - Reconstructed data
     """
-    def __init__(self):
+    print("note that the decoder currently reconstructs to data size of 4 seconds")
+    def __init__(self,dataParameters=None):
+        self.dataParameters = dataParameters
         super(Decoder, self).__init__()
         self.latent2dec = nn.Sequential(
-            nn.Linear(9, 1152),
+            nn.Linear(9, 128*4*7),
             nn.ReLU(True)
         )
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(128, 64, kernel_size=(3,3), stride=(2,2), padding=(1,0)), # <---- Experimental
             nn.ReLU(True),  # <---- Experimental
-            nn.ConvTranspose2d(64, 32, kernel_size=(3,3), stride=(2,2), padding=(0,1)),
+            nn.ConvTranspose2d(64, 32, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
             nn.ReLU(True),
-            nn.ConvTranspose2d(32, 16, kernel_size=(3,3), stride=(2,2), padding=(0,1)),
+            nn.ConvTranspose2d(32, 16, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
             nn.ReLU(True),
-            nn.ConvTranspose2d(16, 8, kernel_size=(3,3), stride=(2,2), padding=(0,0)),
+            nn.ConvTranspose2d(16, 8, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
             nn.ReLU(True),
-            nn.ConvTranspose2d(8, 1, kernel_size=(3,3), stride=(2,2), padding=(0,1)),
+            nn.ConvTranspose2d(8, 1, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
         )
 
     def forward(self, x):
+        
+        
         x = self.latent2dec(x)
-        x = x.view(-1, 128, 3, 3)
+        print(x.shape)
+        #the -1 is to select the last one 
+        x = x.view(-1, 128, 4, 7)
+        print(x.shape)
         x = self.decoder(x)
-        return x[:,:,4:-4,1:]
+        print(x.shape)
+        print(x[:,:,:,25:].shape)
+        return x[:,:,:,25:]
 
 
 class AEC(nn.Module):
     """
     Description: Autoencoder model; combines encoder and decoder layers.
     Inputs:
+        - Parameters (so that the output data sizes are generated correctly)
         - Input data (spectrograms)
     Outputs:
         - Reconstructed data
         - Latent space data
     """
-    def __init__(self):
+    def __init__(self,dataParameters=None):
+        self.dataParameters = dataParameters
         super(AEC, self).__init__()
         self.encoder = Encoder()
         self.decoder = Decoder()

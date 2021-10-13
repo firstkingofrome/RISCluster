@@ -78,7 +78,7 @@ def DEC_pretrain(parameters, hyperparameters):
         while not completed:
             try:
                 # ==== Instantiate Model, Optimizer, & Loss Functions =========
-                model = AEC()
+                model = AEC(dataParameters=parameters)
                 model.to(device)
                 model.apply(init_weights)
 

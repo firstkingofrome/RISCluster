@@ -480,19 +480,21 @@ def cluster_gallery(
         plt.close()
     return fig
 
-
+#added in the time segment so I can access the correct portion of the file
 def compare_images(
         model,
         epoch,
         image_index,
         fname_dataset,
         device,
+        T_seg=4.0,
         savepath=None,
         show=True,
     ):
-    tvec, fvec = utils.get_timefreqvec(fname_dataset)
+    tvec, fvec = utils.get_timefreqvec(fname_dataset,T_seg)
     dataset = utils.H5SeismicDataset(
-        fname_dataset,
+        T_seg = T_seg,
+        fname=fname_dataset,
         transform = transforms.Compose(
             [utils.SpecgramShaper(), utils.SpecgramToTensor()]
         )
@@ -520,6 +522,7 @@ def compare_images(
         tvec,
         fvec,
         fname_dataset,
+        T_seg=T_seg,
         show=show
     )
     if savepath is not None:
@@ -1476,6 +1479,7 @@ def view_specgram_training(
         fvec,
         fname_dataset,
         figsize=(8,3),
+        T_seg=4,
         show=True
     ):
     rc_fonts = {
@@ -1485,10 +1489,11 @@ def view_specgram_training(
     }
     plt.rcParams.update(rc_fonts)
     sample_idx = np.arange(0, len(disp_idx))
-    metadata = utils.get_metadata(sample_idx, disp_idx, fname_dataset)
+    metadata = utils.get_metadata(sample_idx, disp_idx, fname_dataset,T_seg=T_seg)
     X = x.detach().cpu().numpy()
     X_r = x_r.detach().cpu().numpy()
     z = z.detach().cpu().numpy()
+    outputX,outputY = list(X_r.shape[2:])
     n, o = list(X.shape[2:])
     fig = plt.figure(figsize=(figsize[0],len(disp_idx)*figsize[1]), dpi=150)
     cmap = 'cmo.ice_r'
@@ -1542,7 +1547,8 @@ def view_specgram_training(
         ax2.add_artist(con)
 
         ax3 = fig.add_subplot(gs[counter,2])
-        plt.imshow(np.reshape(X_r[i,:,:,:], (n,o)), cmap=cmap, extent=extent, aspect='auto', origin='lower', interpolation="none")
+        #note that I modified this line to reshape the spectrogram to whatever the output dimensions are (since I am currently having issues with this)
+        plt.imshow(np.reshape(X_r[i,:,:,:], (outputX,outputY)), cmap=cmap, extent=extent, aspect='auto', origin='lower', interpolation="none")
         plt.colorbar(orientation='vertical', pad=0)
         plt.clim(0,1)
         plt.title("Output\n" + r"$\bm{x}'$", x=0.55)
