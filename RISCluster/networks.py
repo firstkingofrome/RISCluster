@@ -118,7 +118,7 @@ class Decoder(nn.Module):
     Outputs:
         - Reconstructed data
     """
-    print("note that the decoder currently reconstructs to data size of 4 seconds")
+    #print("note that the decoder currently reconstructs to data size of 4 seconds")
     def __init__(self,dataParameters=None):
         self.dataParameters = dataParameters
         super(Decoder, self).__init__()
@@ -142,13 +142,13 @@ class Decoder(nn.Module):
         
         
         x = self.latent2dec(x)
-        print(x.shape)
+        #print(x.shape)
         #the -1 is to select the last one 
         x = x.view(-1, 128, 4, 7)
-        print(x.shape)
+        #print(x.shape)
         x = self.decoder(x)
         print(x.shape)
-        print(x[:,:,:,25:].shape)
+        #print(x[:,:,:,25:].shape)
         return x[:,:,:,25:]
 
 
