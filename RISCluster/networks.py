@@ -32,26 +32,26 @@ class Encoder(nn.Module):
         self.encoder = nn.Sequential(
             #1,8X256
             nn.Conv2d(in_channels=1, out_channels=8, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
-            nn.ReLU(True),
+            nn.Tanh(),
             #97X100
             nn.Conv2d(8, 16, kernel_size=(3,3), stride=(2,2), padding=1),
-            nn.ReLU(True),
+            nn.Tanh(),
             #48X50
             nn.Conv2d(16, 32, kernel_size=(3,3), stride=(2,2), padding=1),
-            nn.ReLU(True),
+            nn.Tanh(),
             #24X25
             nn.Conv2d(32, 64, kernel_size=(3,3), stride=(2,2), padding=1),
-            nn.ReLU(True),
+            nn.Tanh(),
             #12X12
             nn.Conv2d(64, 128, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
-            nn.ReLU(True),
+            nn.Tanh(),
             #11,11
             nn.Flatten(),
             #this tells the network the number of input features and the number of output features
             #I guess that convolutional layers are not necessarily fully connected
             #3073 inputs and 9 outputs
             nn.Linear(128*4*7, 9),
-            nn.ReLU(True)
+            nn.Tanh()
         )
 
     def forward(self, x):
@@ -124,17 +124,17 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.latent2dec = nn.Sequential(
             nn.Linear(9, 128*4*7),
-            nn.ReLU(True)
+            nn.Tanh()
         )
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(128, 64, kernel_size=(3,3), stride=(2,2), padding=(1,0)), # <---- Experimental
-            nn.ReLU(True),  # <---- Experimental
+            nn.Tanh(),  # <---- Experimental
             nn.ConvTranspose2d(64, 32, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
-            nn.ReLU(True),
+            nn.Tanh(),
             nn.ConvTranspose2d(32, 16, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
-            nn.ReLU(True),
+            nn.Tanh(),
             nn.ConvTranspose2d(16, 8, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
-            nn.ReLU(True),
+            nn.Tanh(),
             nn.ConvTranspose2d(8, 1, kernel_size=(3,3), stride=(2,2), padding=(1,1)),
         )
 

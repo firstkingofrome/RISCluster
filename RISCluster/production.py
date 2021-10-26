@@ -171,6 +171,7 @@ def DEC_train(parameters, hyperparameters):
     saved_weights = parameters['saved_weights']
     transform = parameters['transform']
     workers = parameters['workers']
+    T_seg = parameters["T_seg"]
     # ==== Checks =============================================================
     if not os.path.exists(saved_weights):
         raise ValueError(f'Saved weights file not found: {saved_weights}')
@@ -184,7 +185,8 @@ def DEC_train(parameters, hyperparameters):
         fname_dataset,
         transform = transforms.Compose(
             [utils.SpecgramShaper(), utils.SpecgramToTensor()]
-        )
+        ),
+        T_seg=T_seg
     )
     tra_dataset = Subset(dataset, index_tra)
     print(f'Dataset has {len(dataset)} samples.')
@@ -263,6 +265,7 @@ def DEC_predict(parameters):
     send_message = parameters['send_message']
     transform = parameters['transform']
     workers = parameters['workers']
+    T_seg = parameters["T_seg"]
     # ==== Checks =============================================================
     if not os.path.exists(saved_weights):
         raise ValueError(f'Saved weights file not found: {saved_weights}')
@@ -271,6 +274,7 @@ def DEC_predict(parameters):
     # ==== Run Model ==========================================================
     dataset = utils.H5SeismicDataset(
         fname_dataset,
+        T_seg=T_seg,
         transform = transforms.Compose(
             [utils.SpecgramShaper(), utils.SpecgramToTensor()]
         )

@@ -45,7 +45,8 @@ def analyze_dec(
         tsne_results,
         epoch,
         show=False,
-        latex=False
+        latex=False,
+        T_seg=4.0
     ):
     '''
     Function displays reconstructions using the centroids of the latent feature
@@ -61,6 +62,7 @@ def analyze_dec(
     # Output:
         Figures displaying centroids and their associated reconstructions.
     '''
+
     n_clusters = model.n_clusters
     p = 2
     title = f't-SNE Results - Epoch {epoch}'
@@ -80,7 +82,8 @@ def analyze_dec(
         centroids_b,
         p,
         show,
-        latex
+        latex,
+        T_seg
     )
     # fig3 = centroid_dashboard(
     #     data_b,
@@ -318,8 +321,10 @@ def cluster_gallery(
         centroids=None,
         p=2,
         show=True,
-        latex=False
+        latex=False,
+        T_seg=4.0
     ):
+
     model.eval()
     label_list, counts = np.unique(labels, return_counts=True)
     if centroids is not None:
@@ -369,9 +374,10 @@ def cluster_gallery(
             X = batch.to(device)
             with h5py.File(fname_dataset, 'r') as f:
                 M = len(idx)
-                DataSpec = '/4.0/Trace'
+
+                DataSpec = "/"+str(T_seg)+"/Trace"
                 dset = f[DataSpec]
-                k = 199
+                k = 399
 
                 tr = np.empty([M, k])
                 dset_arr = np.empty([k,])
@@ -410,8 +416,8 @@ def cluster_gallery(
             plt.xticks([0, 100], ['0', '4'])
             plt.yticks([0, 87], ['3', '20'])
             ax.yaxis.tick_right()
-            plt.text(50, -20, 'Time (s)', ha="center")
-            plt.text(120, 44, 'Freq (Hz)', ha="center", va="center", rotation="vertical")
+            #plt.text(50, -20, 'Time (s)', ha="center")
+            #plt.text(120, 44, 'Freq (Hz)', ha="center", va="center", rotation="vertical")
         else:
             plt.xticks([])
             plt.yticks([])
@@ -577,7 +583,8 @@ def plotter_mp(
         tsne_results,
         epoch,
         show,
-        latex=False
+        latex=False,
+        T_seg=8.0
     ):
     '''Wrapper function for plotting DEC training and performance.
 
@@ -639,6 +646,8 @@ def plotter_mp(
     ---------------
     Figures analyzing DEC performance.
     '''
+    
+    
 
     figures = analyze_dec(
         model,
@@ -655,7 +664,8 @@ def plotter_mp(
         tsne_results,
         epoch,
         show,
-        latex
+        latex,
+        T_seg
     )
     [fig.savefig(f"{figpaths[i]}/{fignames[i]}_{epoch:03d}.png", dpi=300) \
         for i, fig in enumerate(figures)]
@@ -981,7 +991,89 @@ def view_DEC_output(x, label, x_rec, z, idx, figsize=(12,9), show=False):
         plt.show()
     return fig
 
+#plots one detection with a colorbar
+def view_one_detection(fname_dataset, image_index, figsize=(12,9),T_seg=4.0,show=True):
+    '''Plots selected spectrograms & traces.'''
+    sample_index = [0]
+    dataset = utils.H5SeismicDataset(
+        fname_dataset,
+        transform = transforms.Compose(
+            [utils.SpecgramShaper(), utils.SpecgramToTensor()]
+        ),
+        T_seg=T_seg
+    )
+    subset = Subset(dataset, image_index)
+    dataloader = DataLoader(subset, batch_size=len(image_index))
 
+    for batch in dataloader:
+        idx, X = batch
+        idx.numpy()
+        with h5py.File(fname_dataset, 'r') as f:
+            M = len(idx)
+            DataSpec = '/'+str(T_seg)+'/Trace'
+            dset = f[DataSpec]
+            #do this dynamicaly so this tool is useful for more than just the 4 second case
+            k = dset.shape[-1]
+
+            tr = np.empty([M, k])
+            dset_arr = np.empty([k,])
+            
+            for i in range(M):
+                dset_arr = dset[idx[i]]
+                tr[i,:] = dset_arr
+
+    factor = 1e-9
+    tr_max = np.max(np.abs(tr)) / factor
+
+    tvec, fvec = utils.get_timefreqvec(fname_dataset,T_seg)
+
+    extent = [min(tvec), max(tvec), min(fvec), max(fvec)]
+    metadata = utils.get_metadata(sample_index, image_index, fname_dataset,T_seg)
+    fontsize = 16
+    fig = plt.figure(figsize=figsize, dpi=400)
+    #cmap = 'cmo.ice_r'
+    cmap = 'viridis'
+    gs_sup = gridspec.GridSpec(nrows=2, ncols=2, hspace=0.35, wspace=0.15)
+    counter = 0
+
+    gs_sub = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_sup[i], hspace=0)
+
+    ax = fig.add_subplot(gs_sub[0])
+    plt.imshow(X[sample_index[i],:,:].squeeze(), extent=extent, aspect='auto', origin='lower', cmap=cmap, interpolation="none")
+    plt.colorbar(location="right")
+    ax.set_xticks([])
+    ax.set_yticks([5, 10, 15, 20])
+    if i == 0:
+        plt.ylabel('Frequency\n(Hz)', size=fontsize)
+    station = metadata[counter]['station']
+    time_on = metadata[counter]['spec_start']
+    plt.title(f'Station {station}, {time_on[:-4]}', size=fontsize)
+              # f'Index: {image_index[sample_index[i]]}')
+    tvec = np.linspace(extent[0], extent[1], tr.shape[1])
+    
+    """
+    ax = fig.add_subplot(gs_sub[1])
+    plt.plot(tvec, tr[i,:] / factor)
+    plt.xlim(min(tvec), max(tvec))
+    plt.ylim(-tr_max, tr_max)
+    ax.set_xticks(np.arange(int(T_seg)))
+    if i == 0:
+        plt.xlabel('Time (s)', size=fontsize)
+        plt.ylabel('Acceleration\n(nm/s$^2$)', size=fontsize)
+
+    counter += 1
+    plt.subplots_adjust(wspace=4.0, hspace=2.0)
+    """
+    
+    if show:
+        plt.show()
+    else:
+        plt.close()
+    return fig
+    
+
+    
+    
 def view_detections(fname_dataset, image_index, figsize=(12,9),T_seg=4.0,show=True):
     '''Plots selected spectrograms & traces.'''
     sample_index = np.arange(0, len(image_index))
@@ -1020,8 +1112,9 @@ def view_detections(fname_dataset, image_index, figsize=(12,9),T_seg=4.0,show=Tr
     extent = [min(tvec), max(tvec), min(fvec), max(fvec)]
     metadata = utils.get_metadata(sample_index, image_index, fname_dataset,T_seg)
     fontsize = 16
-    fig = plt.figure(figsize=figsize, dpi=150)
-    cmap = 'cmo.ice_r'
+    fig = plt.figure(figsize=figsize, dpi=300)
+    #cmap = 'cmo.ice_r'
+    cmap = 'viridis'
     gs_sup = gridspec.GridSpec(nrows=2, ncols=2, hspace=0.35, wspace=0.15)
     counter = 0
     for i in range(len(sample_index)):
@@ -1029,6 +1122,7 @@ def view_detections(fname_dataset, image_index, figsize=(12,9),T_seg=4.0,show=Tr
 
         ax = fig.add_subplot(gs_sub[0])
         plt.imshow(X[sample_index[i],:,:].squeeze(), extent=extent, aspect='auto', origin='lower', cmap=cmap, interpolation="none")
+
         ax.set_xticks([])
         ax.set_yticks([5, 10, 15, 20])
         if i == 0:
@@ -1495,7 +1589,7 @@ def view_specgram_training(
     z = z.detach().cpu().numpy()
     outputX,outputY = list(X_r.shape[2:])
     n, o = list(X.shape[2:])
-    fig = plt.figure(figsize=(figsize[0],len(disp_idx)*figsize[1]), dpi=150)
+    fig = plt.figure(figsize=(figsize[0],len(disp_idx)*figsize[1]), dpi=300)
     cmap = 'cmo.ice_r'
     heights = [4 for i in range(x.size()[0])]
     widths = [3, 0.5, 3]
@@ -1510,7 +1604,7 @@ def view_specgram_training(
         ax1 = fig.add_subplot(gs[counter,0])
         plt.imshow(np.reshape(X[i,:,:,:], (n,o)), cmap=cmap, extent=extent, aspect='auto', origin='lower', interpolation="none")
         plt.colorbar(orientation='vertical', pad=0)
-        plt.clim(0,1)
+        #plt.clim(0,1)
         plt.xlabel('Time (s)')
         plt.ylabel('Frequency (Hz)')
         plt.title('Input\n' + r'$\bm{x}$', x=0.55)
@@ -1550,7 +1644,7 @@ def view_specgram_training(
         #note that I modified this line to reshape the spectrogram to whatever the output dimensions are (since I am currently having issues with this)
         plt.imshow(np.reshape(X_r[i,:,:,:], (outputX,outputY)), cmap=cmap, extent=extent, aspect='auto', origin='lower', interpolation="none")
         plt.colorbar(orientation='vertical', pad=0)
-        plt.clim(0,1)
+        #plt.clim(0,1)
         plt.title("Output\n" + r"$\bm{x}'$", x=0.55)
 
         xy2 = (1.8, arrow_yloc)

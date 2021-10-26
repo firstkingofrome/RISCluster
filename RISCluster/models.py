@@ -341,7 +341,8 @@ def train(
         gamma,
         tol,
         index_tra,
-        parameters
+        parameters,
+        T_seg="4.0"
     ):
     '''Trains DEC model & performs clustering.
 
@@ -482,7 +483,8 @@ def train(
             centroids,
             tsne_results,
             epoch,
-            show
+            show,
+            T_seg
     )
     plot_process = threading.Thread(target=plotting.plotter_mp, args=plotargs)
     plot_process.start()
@@ -624,7 +626,8 @@ def train(
                     model.clustering.weights.detach().cpu().numpy(),
                     tsne_results,
                     epoch,
-                    show
+                    show,
+                    T_seg
             )
             plot_process = threading.Thread(
                 target=plotting.plotter_mp,
