@@ -51,7 +51,7 @@ class Encoder(nn.Module):
             #I guess that convolutional layers are not necessarily fully connected
             #3073 inputs and 9 outputs
             nn.Linear(128*4*7, 9),
-            nn.Tanh()
+            nn.Tanh() 
         )
 
     def forward(self, x):
@@ -124,7 +124,7 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.latent2dec = nn.Sequential(
             nn.Linear(9, 128*4*7),
-            nn.Tanh()
+            #nn.Tanh() #chuck things that it is a good idea to drop the final tanh here
         )
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(128, 64, kernel_size=(3,3), stride=(2,2), padding=(1,0)), # <---- Experimental

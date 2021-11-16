@@ -58,11 +58,35 @@ class H5SeismicDataset(Dataset):
             return f[DataSpec][idx]
 
 
+#batch loader to memory (as implemented by Jenkins)
+def dataset_to_RAM(dataset):
+    bsz = 4096
+    dl = DataLoader(dataset, batch_size=bsz, pin_memory=True)
+    pbar = tqdm(
+        dl,
+        leave=True,
+        desc="Loading Data",
+        unit="batch",
+        bar_format='{l_bar}{bar:20}{r_bar}{bar:-20b}'
+    )
+    m = dataset.__len__()
+    _, n, o, p = next(iter(dl))[1].shape
+    index = torch.zeros(m, dtype=torch.int)
+    data = torch.zeros(m, n, o, p)
+
+    for b, batch in enumerate(pbar):
+        index[b * bsz:(b*bsz) + len(batch[0])], data[b * bsz:(b * bsz) + len(batch[1]),:] = batch
+
+    return TensorDataset(index, data)
+
+#added a new parameter called dt peak which is the time at which you make want the event to be centered
+#this is to accomodate the fact that my catlogue uses different words for this concept 
+#than does jenkins
 class LabelCatalogue(object):
-    def __init__(self, paths, label_list=None):
+    def __init__(self, paths,dt_peak="dt_peak", label_list=None):
         self.paths = paths
         self.freq = None
-        self.df = self.build_df(self.paths)
+        self.df = self.build_df(self.paths,dt_peak)
         if label_list is not None:
             self.label_list = label_list.sort()
         else:
@@ -92,28 +116,14 @@ class LabelCatalogue(object):
         return amp_stats.set_index("Class")
 
 
-    def build_df(self, paths):
+    def build_df(self, paths,dt_peak):
         data1 = pd.read_csv(paths[0]).drop(columns=["Index"])
         data2 = pd.read_csv(self.paths[1])
+        #I think he wanted to drop everything except the index?
         df = pd.concat(
             [data1, data2],
             axis=1
-        ).drop(
-            columns=[
-                "channel",
-                "dt_on",
-                "dt_off",
-                "fs",
-                "delta",
-                "npts",
-                "STA",
-                "LTA",
-                "on",
-                "off",
-                "spec_start",
-                "spec_stop"
-            ]
-        ).rename(columns={"dt_peak": "time"})
+        ).rename(columns={dt_peak: "time"})
         df["time"] = df["time"].astype("datetime64")
         df.set_index("time", inplace=True)
         df.sort_index(inplace=True)
